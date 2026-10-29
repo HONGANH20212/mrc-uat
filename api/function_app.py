@@ -9,6 +9,7 @@ from email.policy import default
 
 import azure.functions as func
 from azure.cosmos import CosmosClient
+from azure.core import MatchConditions
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
@@ -1328,6 +1329,19 @@ def normalize_order_status_for_customer(value):
     return " ".join(text.split())
 
 
+def is_cancelled_order(order):
+    return normalize_order_status_for_customer((order or {}).get('status')) == 'da huy'
+
+
+def replace_order_atomically(container, item):
+    """Optimistic lock: never overwrite a more recent cancel/status change."""
+    etag = item.get('_etag')
+    if not etag:
+        raise ValueError('Thiếu ETag; không thể cập nhật an toàn')
+    return container.replace_item(item=item['id'], body=item, etag=etag,
+                                  match_condition=MatchConditions.IfNotModified)
+
+
 def is_customer_order_editable(order):
     """Khách chỉ được chỉnh sửa/hủy ở các trạng thái cho phép."""
     if not isinstance(order, dict):
@@ -1462,7 +1476,7 @@ def customer_order_action(req: func.HttpRequest) -> func.HttpResponse:
             item["customer_updated_at"] = now
             item["updated_at"] = now
 
-            container.replace_item(item=item["id"], body=item)
+            replace_order_atomically(container, item)
             return json_response({
                 "message": "Đã cập nhật thông tin nhận hàng",
                 "item": item
@@ -1479,7 +1493,7 @@ def customer_order_action(req: func.HttpRequest) -> func.HttpResponse:
             item["cancelled_at"] = now
             item["updated_at"] = now
 
-            container.replace_item(item=item["id"], body=item)
+            replace_order_atomically(container, item)
             return json_response({
                 "message": "Đã hủy đơn hàng",
                 "item": item
@@ -1488,9 +1502,11 @@ def customer_order_action(req: func.HttpRequest) -> func.HttpResponse:
         return json_response({"error": "Hành động không hợp lệ"}, 400)
 
     except ValueError:
-        return json_response({"error": "Dữ liệu JSON không hợp lệ"}, 400)
+        return json_response({"error": "Dữ liệu JSON không hợp lệ hoặc thiếu ETag"}, 400)
     except Exception as e:
-        return json_response({"error": str(e)}, 500)
+        if getattr(e, 'status_code', None) in (409, 412):
+            return json_response({"error": "Đơn đã được cập nhật đồng thời; tải lại trước khi thao tác"}, 409)
+        return json_response({"error": "Không thể cập nhật đơn; kiểm tra log Functions"}, 500)
 
 
 @app.route(route="orders/{id}", methods=["PUT", "DELETE", "OPTIONS"])
@@ -1516,18 +1532,38 @@ def order_by_id(req: func.HttpRequest) -> func.HttpResponse:
 
         if req.method == "PUT":
             body = req.get_json()
+            if not isinstance(body, dict):
+                return json_response({"error": "Payload không hợp lệ"}, 400)
             now = datetime.utcnow().isoformat() + "Z"
+            old_status = str(item.get('status') or '').strip()
+            if is_cancelled_order(item):
+                return json_response({"error": "Đơn đã hủy là trạng thái cuối cùng; không cho sửa hoặc nhập tracking"}, 409)
 
-            # Giữ nguyên chức năng cũ: admin cập nhật trạng thái và mã vận đơn SPX.
-            if "status" in body:
-                item["status"] = body.get("status")
-            if "spx_tracking_code" in body:
-                item["spx_tracking_code"] = body.get("spx_tracking_code") or ""
-
-            # Bổ sung chức năng hủy đơn từ trang tra cứu, không ảnh hưởng cập nhật trạng thái admin.
-            for field in ["cancel_reason", "cancelled_by_customer", "cancelled_at"]:
-                if field in body:
-                    item[field] = body.get(field)
+            new_status = str(body.get('status', old_status) or '').strip()
+            if not new_status:
+                return json_response({"error": "Trạng thái không được để trống"}, 400)
+            is_to_deliver = new_status == 'Đang giao hàng'
+            has_tracking_update = any(k in body for k in
+                                      ('spx_tracking_code', 'shipping_provider', 'tracking_updated_at'))
+            if is_to_deliver or has_tracking_update:
+                if old_status != 'Đang chuẩn bị hàng' or not is_to_deliver:
+                    return json_response({"error": "Chỉ đơn Đang chuẩn bị hàng mới được nhập tracking và chuyển Đang giao hàng"}, 409)
+                code = str(body.get('spx_tracking_code') or '').strip().upper()
+                if not re.fullmatch(r'SPX[A-Z0-9]+', code):
+                    return json_response({"error": "Mã vận đơn SPX không hợp lệ hoặc trống"}, 400)
+                if str(item.get('spx_tracking_code') or '').strip():
+                    return json_response({"error": "Đơn đã có mã tracking; không cho nhập lại"}, 409)
+                item['spx_tracking_code'] = code
+                item['shipping_provider'] = 'SPX'
+                item['tracking_updated_at'] = now
+            if is_cancelled_order({'status': new_status}):
+                if has_tracking_update:
+                    return json_response({"error": "Không thể thêm tracking khi hủy đơn"}, 409)
+                new_status = 'Đã hủy'
+                item['cancelled_at'] = now
+                item['cancelled_by_customer'] = False
+                item['cancel_reason'] = str(body.get('cancel_reason') or 'Admin hủy đơn').strip()[:500]
+            item['status'] = new_status
 
             # Bổ sung lưu thông tin khách hàng sau khi chỉnh sửa trên tracking.html.
             has_customer_update = any(key in body for key in [
@@ -1558,7 +1594,7 @@ def order_by_id(req: func.HttpRequest) -> func.HttpResponse:
                     item["customer_updated_at"] = updated_at
 
             item["updated_at"] = now
-            container.replace_item(item=item["id"], body=item)
+            replace_order_atomically(container, item)
             return json_response({"message": "Cập nhật đơn hàng thành công", "item": item})
 
         if req.method == "DELETE":
@@ -1566,7 +1602,11 @@ def order_by_id(req: func.HttpRequest) -> func.HttpResponse:
             return json_response({"message": "Xóa đơn hàng thành công"})
             
     except Exception as e:
-        return json_response({"error": str(e)}, 500)
+        if getattr(e, 'status_code', None) in (409, 412):
+            return json_response({"error": "Đơn đã thay đổi trên hệ thống; tải lại trước khi thao tác"}, 409)
+        if isinstance(e, ValueError):
+            return json_response({"error": str(e)}, 400)
+        return json_response({"error": "Không cập nhật được đơn hàng; kiểm tra log Functions"}, 500)
 
 @app.route(route="track", methods=["GET", "OPTIONS"])
 def track_order(req: func.HttpRequest) -> func.HttpResponse:

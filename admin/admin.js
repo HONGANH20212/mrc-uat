@@ -1454,6 +1454,27 @@ window.getOrderPaymentInfo = window.getOrderPaymentInfo || function(order) {
     };
 };
 
+// MORACHI_ORDER_TERMINAL_CANCEL_V1
+// Đơn Đã hủy chỉ hiển thị ở danh sách hủy và không thể cập nhật tracking/trạng thái.
+window.morachiOrderStatus = function(order) {
+    return String((order && order.status) || 'Chờ xác nhận').trim().replace(/\s+/g, ' ');
+};
+window.morachiIsCancelled = function(order) {
+    return window.normalizeAdminText(window.morachiOrderStatus(order)) === 'da huy';
+};
+window.morachiCanImportTracking = function(order) {
+    return !!order && window.morachiOrderStatus(order) === 'Đang chuẩn bị hàng'
+        && !window.morachiIsCancelled(order)
+        && !String(order.spx_tracking_code || '').trim();
+};
+window.morachiVisibleOrders = function() {
+    const filter = window.normalizeAdminText(window.__morachiOrderStatusFilter || '');
+    if (!filter) return allOrdersData.filter(o => !window.morachiIsCancelled(o));
+    if (filter === 'da huy') return allOrdersData.filter(window.morachiIsCancelled);
+    return allOrdersData.filter(o => !window.morachiIsCancelled(o)
+        && window.normalizeAdminText(window.morachiOrderStatus(o)) === filter);
+};
+
 // =========================================================
 // PHẦN 2: QUẢN LÝ ĐƠN HÀNG
 // =========================================================
@@ -1536,10 +1557,7 @@ window.loadOrders = async function(options = {}) {
             if (checkAllEl) checkAllEl.checked = false;
         }
         window.updateOrderDashboardStats(allOrdersData);
-        const activeFilter = String(window.__morachiOrderStatusFilter || '').toLowerCase();
-        window.renderOrdersTable(activeFilter
-            ? allOrdersData.filter(o => String(o.status || 'Chờ xác nhận').toLowerCase() === activeFilter)
-            : allOrdersData);
+        window.renderOrdersTable(window.morachiVisibleOrders());
         window.updateBulkActionBar();
     } catch (err) {
         console.error("Lỗi lấy đơn hàng:", err);
@@ -1560,6 +1578,7 @@ window.renderOrdersTable = function(ordersList) {
     const orderRowsHtml = ordersList.map(o => {
         const c = o.customer_info || {};
         const items = o.items || [];
+        const isCancelled = window.morachiIsCancelled(o);
         
         let timeDisplay = "";
         let orderDate = o.created_at || o.date; 
@@ -1658,7 +1677,7 @@ window.renderOrdersTable = function(ordersList) {
         return `
             <tr data-order-id="${o.id}">
                 <td style="text-align: center;">
-                    <input type="checkbox" class="order-checkbox" value="${o.id}" data-orderid="${o.order_id || 'N/A'}" data-total="${o.total_amount || 0}" onclick="window.updateBulkActionBar()">
+                    <input type="checkbox" class="order-checkbox" value="${o.id}" data-orderid="${o.order_id || 'N/A'}" data-total="${o.total_amount || 0}" ${isCancelled ? 'disabled title="Đơn đã hủy, không được sửa"' : ''} onclick="window.updateBulkActionBar()">
                 </td>
                 <td>
                     <div style="font-weight:700; color:var(--text-main); font-size:13px;">${o.order_id || 'N/A'}</div>
@@ -1679,7 +1698,9 @@ window.renderOrdersTable = function(ordersList) {
                 <td>${statusBadge}</td>
                 <td>
                     <div class="action-btns">
-                        <button title="Cập nhật Trạng thái" onclick="window.updateOrderStatus('${o.id}', '${o.status || ''}', '${o.spx_tracking_code || ''}')"><i class="fas fa-check"></i></button>
+                        ${isCancelled
+                            ? '<button type="button" disabled title="Đơn đã hủy: khóa vĩnh viễn"><i class="fas fa-lock"></i></button>'
+                            : `<button title="Cập nhật Trạng thái" onclick="window.updateOrderStatus('${o.id}', '${o.status || ''}', '${o.spx_tracking_code || ''}')"><i class="fas fa-check"></i></button>`}
                         <button title="In hóa đơn/Vận đơn"><i class="fas fa-print"></i></button>
                         <button title="Thao tác khác"><i class="fas fa-ellipsis-h"></i></button>
                     </div>
@@ -1694,23 +1715,12 @@ window.filterOrdersByStatus = function(status) {
     window.__morachiOrderStatusFilter = status || '';
     const checkAllEl = document.getElementById('check-all-orders');
     if (checkAllEl) checkAllEl.checked = false;
+    window.renderOrdersTable(window.morachiVisibleOrders());
     window.updateBulkActionBar();
-    
-    if (!status) {
-        window.renderOrdersTable(allOrdersData);
-        return;
-    }
-    
-    const filteredOrders = allOrdersData.filter(o => {
-        const currentStatus = o.status || 'Chờ xác nhận';
-        return currentStatus.toLowerCase() === status.toLowerCase();
-    });
-    
-    window.renderOrdersTable(filteredOrders);
 }
 
 window.updateBulkActionBar = function() {
-    const checkboxes = document.querySelectorAll('.order-checkbox:checked');
+    const checkboxes = document.querySelectorAll('.order-checkbox:checked:not(:disabled)');
     const bulkBar = document.getElementById('bulk-action-bar');
     if (!bulkBar) return;
 
@@ -1734,7 +1744,7 @@ window.updateBulkActionBar = function() {
 
 window.toggleAllOrders = function(source) {
     const checkboxes = document.querySelectorAll('.order-checkbox');
-    checkboxes.forEach(cb => cb.checked = source.checked);
+    checkboxes.forEach(cb => { cb.checked = !cb.disabled && source.checked; });
     window.updateBulkActionBar();
 }
 
@@ -1746,7 +1756,7 @@ window.applyBulkStatus = async function() {
         return;
     }
 
-    const checkboxes = document.querySelectorAll('.order-checkbox:checked');
+    const checkboxes = document.querySelectorAll('.order-checkbox:checked:not(:disabled)');
     if (checkboxes.length === 0) {
         alert("Vui lòng tích chọn ít nhất 1 đơn hàng trong bảng!");
         return;
@@ -1754,8 +1764,19 @@ window.applyBulkStatus = async function() {
 
     const selectedOrders = Array.from(checkboxes).map(cb => ({
         id: cb.value,
-        orderId: cb.getAttribute('data-orderid')
+        orderId: cb.getAttribute('data-orderid'),
+        order: allOrdersData.find(o => String(o.id) === String(cb.value))
     }));
+    if (selectedOrders.some(x => !x.order || window.morachiIsCancelled(x.order))) {
+        alert('Có đơn đã hủy hoặc không còn tồn tại trong lựa chọn. Vui lòng tải lại danh sách.');
+        await window.loadOrders();
+        return;
+    }
+    if (selectedStatus === 'Đang giao hàng' &&
+        selectedOrders.some(x => !window.morachiCanImportTracking(x.order))) {
+        alert('Chỉ đơn ở trạng thái "Đang chuẩn bị hàng" và chưa có mã tracking mới được chuyển sang "Đang giao hàng".');
+        return;
+    }
 
     if (!confirm(`Bạn có chắc chắn muốn chuyển ${selectedOrders.length} đơn hàng sang trạng thái:\n"${selectedStatus}"?`)) return;
 
@@ -1797,32 +1818,48 @@ window.applyBulkStatus = async function() {
         
         await window.loadOrders({silent:true});
     } catch (err) {
-        alert("Có lỗi xảy ra trong quá trình cập nhật trên máy chủ!");
+        await window.loadOrders({silent:true});
+        alert("Có lỗi khi cập nhật hàng loạt. Có thể một số đơn đã thành công; danh sách đã được tải lại để kiểm tra.");
     }
 }
 
 window.updateOrderStatus = async function(id, currentStatus, currentSpxCode) {
-    const newStatus = prompt("Cập nhật trạng thái (VD: Đang giao hàng, Đã giao hàng...):", currentStatus || "Đang giao hàng");
-    if (newStatus === null) return;
-
-    const newSpxCode = prompt("Nhập Mã Vận Đơn (nếu có):", currentSpxCode || "");
-    if (newSpxCode === null) return;
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/orders/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus, spx_tracking_code: newSpxCode })
-        });
-
-        if (response.ok) {
-            await window.loadOrders({silent:true});
-            window.showReorderStatus?.('Đã cập nhật trạng thái đơn', 'success');
-        } else {
-            alert("Lỗi khi cập nhật trên máy chủ!");
+    const order = allOrdersData.find(o => String(o.id) === String(id));
+    if (!order || window.morachiIsCancelled(order)) {
+        alert('Đơn đã hủy hoặc không còn trong danh sách; không được thay đổi trạng thái.');
+        return;
+    }
+    const rawStatus = prompt('Cập nhật trạng thái:', currentStatus || 'Đang chuẩn bị hàng');
+    if (rawStatus === null) return;
+    const newStatus = rawStatus.trim();
+    if (!newStatus) { alert('Trạng thái không được để trống.'); return; }
+    const body = { status: newStatus };
+    if (newStatus === 'Đang giao hàng') {
+        if (!window.morachiCanImportTracking(order)) {
+            alert('Chỉ đơn "Đang chuẩn bị hàng" chưa có tracking mới được chuyển sang "Đang giao hàng".');
+            return;
         }
+        const code = prompt('Nhập mã vận đơn SPX (bắt buộc):', '');
+        if (code === null) return;
+        if (!/^SPX[A-Z0-9]+$/i.test(code.trim())) {
+            alert('Mã vận đơn SPX không hợp lệ.');
+            return;
+        }
+        body.spx_tracking_code = code.trim().toUpperCase();
+    }
+    if (newStatus === 'Đã hủy' && !confirm('Đã hủy là trạng thái cuối cùng, không thể khôi phục. Xác nhận hủy đơn?')) return;
+    try {
+        const response = await fetch(`${API_BASE_URL}/orders/${encodeURIComponent(id)}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+        await window.loadOrders({silent:true});
+        window.showReorderStatus?.('Đã cập nhật trạng thái đơn', 'success');
     } catch (err) {
-        alert("Lỗi kết nối API!");
+        alert('Không cập nhật được: ' + err.message);
+        await window.loadOrders({silent:true});
     }
 }
 
@@ -2036,9 +2073,12 @@ window.importSPXTrackingFile = async function(input) {
     if (!file) return;
 
     try {
-        if (!Array.isArray(allOrdersData) || allOrdersData.length === 0) {
-            await window.loadOrders({silent:true});
-        }
+        // Không dùng dữ liệu localStorage: phải đọc trạng thái mới nhất từ server.
+        const freshResponse = await fetch(`${API_BASE_URL}/orders?t=${Date.now()}`, {cache:'no-store'});
+        if (!freshResponse.ok) throw new Error(`Không đọc được trạng thái đơn hàng mới nhất (HTTP ${freshResponse.status})`);
+        const freshOrders = await freshResponse.json();
+        if (!Array.isArray(freshOrders)) throw new Error('API đơn hàng không hợp lệ; dừng import tracking');
+        allOrdersData = freshOrders;
 
         const rows = await window.readSPXFileRows(file);
         const spxRecords = window.extractSPXRecordsFromRows(rows);
@@ -2062,6 +2102,8 @@ window.importSPXTrackingFile = async function(input) {
                     .filter(Boolean);
                 ids.forEach(id => orderById.set(id, order));
 
+                // Cấm mọi trạng thái khác, đặc biệt đơn đã hủy.
+                if (!window.morachiCanImportTracking(order)) return;
                 const key = window.getOrderMatchKey(order);
                 if (!key || key === "|") return;
                 if (!queuesByCustomer.has(key)) queuesByCustomer.set(key, []);
@@ -2072,43 +2114,66 @@ window.importSPXTrackingFile = async function(input) {
         const updatePayloads = [];
         const unmatched = [];
         const duplicateWarnings = [];
+        const skippedStatus = [];
+        const usedTrackingCodes = new Set();
 
         for (const record of spxRecords) {
             let matchedOrder = null;
-
-            const importOrderId = window.cleanOrderText(record.orderId).toLowerCase();
-            if (importOrderId && orderById.has(importOrderId)) {
-                const order = orderById.get(importOrderId);
-                if (!usedOrderIds.has(String(order.id))) matchedOrder = order;
-            }
-
-            if (!matchedOrder) {
-                const key = `${window.normalizeVietnameseText(record.receiverName)}|${record.receiverPhone}`;
-                const queue = queuesByCustomer.get(key) || [];
-                const available = queue.filter(order => !usedOrderIds.has(String(order.id)));
-
-                if (available.length > 1) {
-                    duplicateWarnings.push(`${record.receiverName} - ${record.receiverPhone} có ${available.length} đơn trùng thông tin, hệ thống gán theo thứ tự đơn cũ trước.`);
-                }
-
-                matchedOrder = available[0] || null;
-            }
-
-            if (!matchedOrder) {
-                unmatched.push(`${record.trackingCode} | ${record.receiverName} | ${record.receiverPhone}`);
+            const trackingCode = record.trackingCode.toUpperCase();
+            if (usedTrackingCodes.has(trackingCode)) {
+                duplicateWarnings.push(`${trackingCode}: trùng mã tracking trong file, đã bỏ qua`);
                 continue;
             }
-
+            usedTrackingCodes.add(trackingCode);
+            const key = `${window.normalizeVietnameseText(record.receiverName)}|${record.receiverPhone}`;
+            const importOrderId = window.cleanOrderText(record.orderId).toLowerCase();
+            if (importOrderId) {
+                // Có mã đơn thì phải match chính xác; KHÔNG fallback sang tên + SĐT.
+                const candidate = orderById.get(importOrderId);
+                if (!candidate) {
+                    unmatched.push(`${trackingCode}: không tìm thấy mã đơn ${record.orderId}`);
+                    continue;
+                }
+                if (!window.morachiCanImportTracking(candidate)) {
+                    skippedStatus.push(`${trackingCode}: đơn ${record.orderId} đang ở trạng thái "${window.morachiOrderStatus(candidate)}"`);
+                    continue;
+                }
+                if (window.getOrderMatchKey(candidate) !== key) {
+                    unmatched.push(`${trackingCode}: tên/SĐT không khớp mã đơn ${record.orderId}`);
+                    continue;
+                }
+                if (usedOrderIds.has(String(candidate.id))) {
+                    duplicateWarnings.push(`${trackingCode}: mã đơn ${record.orderId} đã xuất hiện trong file`);
+                    continue;
+                }
+                matchedOrder = candidate;
+            } else {
+                // Không có mã đơn: chỉ cho phép match khi chính xác MỘT đơn chuẩn bị hàng.
+                const eligible = queuesByCustomer.get(key) || [];
+                if (eligible.length !== 1) {
+                    if (eligible.length > 1) {
+                        duplicateWarnings.push(`${trackingCode}: ${record.receiverName} - ${record.receiverPhone} có ${eligible.length} đơn đủ điều kiện, cần mã đơn để phân biệt; BỎ QUA`);
+                    } else {
+                        unmatched.push(`${trackingCode} | ${record.receiverName} | ${record.receiverPhone}: không có đơn đang chuẩn bị hàng`);
+                    }
+                    continue;
+                }
+                if (usedOrderIds.has(String(eligible[0].id))) {
+                    duplicateWarnings.push(`${trackingCode}: một đơn đã được gán tracking khác trong file`);
+                    continue;
+                }
+                matchedOrder = eligible[0];
+            }
+            // Kiểm tra phòng vệ cuối cùng trước khi gửi API.
+            if (!matchedOrder || !window.morachiCanImportTracking(matchedOrder)) {
+                skippedStatus.push(`${trackingCode}: đơn không còn đủ điều kiện`);
+                continue;
+            }
             usedOrderIds.add(String(matchedOrder.id));
             updatePayloads.push({
-                order: matchedOrder,
-                trackingCode: record.trackingCode,
-                body: {
-                    status: "Đang giao hàng",
-                    spx_tracking_code: record.trackingCode,
-                    shipping_provider: "SPX",
-                    tracking_updated_at: new Date().toISOString()
-                }
+                order: matchedOrder, trackingCode,
+                body: { status: 'Đang giao hàng', spx_tracking_code: trackingCode,
+                        shipping_provider: 'SPX', tracking_updated_at: new Date().toISOString() }
             });
         }
 
@@ -2121,7 +2186,8 @@ window.importSPXTrackingFile = async function(input) {
             `Tìm thấy ${spxRecords.length} mã SPX trong file.`,
             `Sẽ cập nhật ${updatePayloads.length} đơn sang trạng thái "Đang giao hàng".`,
             unmatched.length ? `Không khớp: ${unmatched.length} dòng.` : "Không có dòng không khớp.",
-            duplicateWarnings.length ? `Lưu ý: ${duplicateWarnings.length} khách có nhiều đơn trùng tên + SĐT.` : "",
+            skippedStatus.length ? `Bỏ qua do trạng thái không hợp lệ: ${skippedStatus.length} dòng.` : "",
+            duplicateWarnings.length ? `Bỏ qua vì trùng/không phân biệt được đơn: ${duplicateWarnings.length} dòng.` : "",
             "",
             "Bạn có chắc chắn muốn cập nhật không?"
         ].filter(Boolean).join("\n");
@@ -2156,12 +2222,13 @@ window.importSPXTrackingFile = async function(input) {
         } catch (e) {}
 
         window.updateOrderDashboardStats(allOrdersData);
-        window.renderOrdersTable(allOrdersData);
+        window.renderOrdersTable(window.morachiVisibleOrders());
 
         let resultMessage = `✅ Đã cập nhật thành công ${success}/${updatePayloads.length} đơn hàng sang "Đang giao hàng".`;
         if (failed.length) resultMessage += `\n\n❌ Cập nhật lỗi ${failed.length} dòng:\n${failed.slice(0, 10).join("\n")}`;
         if (unmatched.length) resultMessage += `\n\n⚠️ Không tìm thấy đơn khớp ${unmatched.length} dòng:\n${unmatched.slice(0, 10).join("\n")}`;
-        if (duplicateWarnings.length) resultMessage += `\n\n⚠️ Có đơn trùng tên + SĐT, vui lòng kiểm tra lại:\n${duplicateWarnings.slice(0, 5).join("\n")}`;
+        if (skippedStatus.length) resultMessage += `\n\n⛔ Đã bỏ qua ${skippedStatus.length} đơn trạng thái không hợp lệ:\n${skippedStatus.slice(0, 10).join("\n")}`;
+        if (duplicateWarnings.length) resultMessage += `\n\n⚠️ Bỏ qua ${duplicateWarnings.length} dòng trùng/không phân biệt được đơn:\n${duplicateWarnings.slice(0, 10).join("\n")}`;
 
         alert(resultMessage);
         window.loadOrders();

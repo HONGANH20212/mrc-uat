@@ -729,7 +729,8 @@
                     <span class="tag-pill orange" onclick="filterOrdersByStatus('Đang chuẩn bị hàng')">Đang chuẩn bị hàng</span>
                     <span class="tag-pill purple" onclick="filterOrdersByStatus('Đang chờ hàng về Việt Nam')">Đang chờ hàng về Việt Nam</span>
                     <span class="tag-pill blue" onclick="filterOrdersByStatus('Đang giao hàng')">Đang giao hàng</span>
-                    <span class="tag-pill gray" onclick="filterOrdersByStatus('')">Tất cả</span>
+                    <span class="tag-pill gray" onclick="filterOrdersByStatus('')">Tất cả (không gồm đã hủy)</span>
+                    <span class="tag-pill red" onclick="filterOrdersByStatus('Đã hủy')"><i class="fas fa-ban"></i> Đã hủy</span>
                 </div>
             </div>
 
@@ -936,6 +937,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="/admin/admin.js?v=taxonomy-v6-20260831"></script>
+    <script src="/admin/admin.js?v=orders-safety-20261029"></script>
 </body>
 </html>

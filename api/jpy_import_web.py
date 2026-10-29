@@ -276,7 +276,7 @@ def bulk_jpy_preview(req: func.HttpRequest) -> func.HttpResponse:
 def bulk_jpy_apply(req: func.HttpRequest) -> func.HttpResponse:
     try:
         obj = _parse_payload(req)
-        if obj.get("confirm") != "WRITE-TO-UAT" or obj.get("account") != EXPECTED_UAT_ACCOUNT:
+        if obj.get("confirm") != ("WRITE-TO-UAT" if EXPECTED_UAT_ACCOUNT == "mrc-uat" else "WRITE-TO-PRODUCTION") or obj.get("account") != EXPECTED_UAT_ACCOUNT:
             raise ValueError("Thiếu xác nhận cập nhật UAT")
         if not isinstance(obj.get("preview_hash"), str) or len(obj["preview_hash"]) != 64:
             raise ValueError("Chưa xem trước nội dung cập nhật")

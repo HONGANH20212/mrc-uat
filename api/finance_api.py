@@ -38,7 +38,9 @@ def finance_container():
     host = (urlparse(url).hostname or '').lower()
     if (urlparse(url).scheme != 'https' or host != f'{ACCOUNT}.documents.azure.com'
             or db != 'morachi-db' or collection != 'products'):
-        raise PermissionError('Chỉ cho phép kết nối mrc-uat / morachi-db / products')
+        raise PermissionError(
+            "Kết nối Cosmos DB không khớp cấu hình cho phép"
+    )
     if not key: raise RuntimeError('Thiếu COSMOS_KEY cho UAT')
     c = CosmosClient(url,credential=key).get_database_client(db).get_container_client(collection)
     if c.read().get('partitionKey',{}).get('paths') != ['/brand']:
