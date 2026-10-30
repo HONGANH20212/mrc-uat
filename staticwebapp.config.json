@@ -1,6 +1,12 @@
 {
   "routes": [
     {
+      "route": "/api/manage/*",
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
       "route": "/api/manage/products",
       "methods": [
         "GET"

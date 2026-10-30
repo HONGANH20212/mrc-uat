@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<title>MORACHI · SKU & Tồn kho – UAT</title>
+<title>MORACHI · SKU & Tồn kho</title>
 <style>
 :root{--navy:#202938;--navy2:#2e394c;--orange:#f67823;--body:#f5f6f9;--muted:#758090;--text:#222a35;--green:#16875a;--red:#ce4747;--amber:#b87113;--line:#e7e9ee}
 *{box-sizing:border-box}html{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#e8eaf0;color:var(--text)}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid #ffb471;outline-offset:2px}
@@ -61,7 +61,7 @@
   <main class="content">
     <div class="section-head"><strong>Danh sách sản phẩm</strong><div class="head-side"><span class="result-count" id="resultCount">Đang tải...</span><button class="refresh" id="refresh" type="button">↻ Tải lại</button><button class="layoutbtn" id="layoutToggle" type="button" title="Đổi số cột" aria-label="Đổi số cột">▦</button></div></div>
     <div id="notice" role="alert"></div>
-    <div class="grid" id="grid"><div class="empty">Đang tải dữ liệu sản phẩm từ UAT...</div></div>
+    <div class="grid" id="grid"><div class="empty">Đang tải dữ liệu từ Cosmos DB...</div></div>
     <div class="hint">Chạm vào sản phẩm để xem từng màu và số lượng hiện có.<br>SKU, giá Yên và ngưỡng cảnh báo chỉ hiển thị nếu đã có trong DB.</div>
   </main>
   <nav class="bottom">
@@ -85,7 +85,7 @@
   <div id="stockStatus"></div>
   <p class="state-note" id="variantNote"></p>
   <div class="wide-action"><button class="btn" type="button" id="reloadSheet">↻ Làm mới tồn kho</button><a class="btn primary" href="/admin/">Mở Admin ↗</a></div>
-  <p class="quiet">Bản này chỉ đọc dữ liệu. Muốn sửa tồn kho/giá nhập cần bổ sung API và quyền ghi UAT trong bước tiếp theo.</p>
+  <p class="quiet">Admin có thể cấp SKU thiếu và nhập giá JPY ngay phía trên. Giá vốn tự tính JPY × 170; tồn kho và giá bán không thay đổi.</p>
 </section>
 <script>(() => {
   'use strict';
@@ -293,5 +293,7 @@
   $('sheetImage').addEventListener('error',()=>{$('sheetImage').src='/images/icon-logo.png'}, {once:true});
   load();
 })();</script>
+<!-- MORACHI_AUTO_SKU_JPY_20261030 -->
+<script src="/admin/sku-price-inline.js?v=20261030"></script>
 </body>
 </html>

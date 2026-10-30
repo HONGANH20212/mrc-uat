@@ -1092,6 +1092,8 @@ window.addVariantRow = function(data = {}) {
         </button>
         ${data.image ? `<div style="grid-column: 1/-1; margin-top: 5px; font-size: 11px;"><a href="${data.image}" target="_blank" style="color:#3498db; text-decoration:none;"><i class="fas fa-image"></i> Xem ảnh đã lưu</a></div>` : ''}
     `;
+    // MORACHI_AUTO_SKU_JPY_20261030: keep variant identity through edits/renames.
+    row.dataset.morachiSku = String(data.sku || '');
     container.appendChild(row);
 }
 
@@ -1227,7 +1229,8 @@ if (form) {
                     status: vStatusInput ? vStatusInput.value : "instock",
                     date: vDateInput ? vDateInput.value.trim() : "",
                     price: vPriceInput && vPriceInput.value ? parseInt(vPriceInput.value) : null,
-                    image: vImageUrl
+                    image: vImageUrl,
+                    sku: row.dataset.morachiSku || ''
                 });
             }
             

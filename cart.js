@@ -5,15 +5,27 @@
 // ném lỗi và làm dừng toàn bộ phần code phía dưới của file này -> khiến các
 // hàm như setupAddressAutocomplete, toggleBankInfo, submitOrder... không
 // bao giờ được định nghĩa, dẫn đến popup thanh toán không hiện ra được)
+// Ưu tiên dữ liệu phiên nếu WebView/Safari không cho ghi localStorage.
+// Giỏ hàng phiên vẫn giữ khi người dùng chuyển trang trong cùng tab.
+const MORACHI_CART_FALLBACK_KEY = 'morachi_cart_session_fallback_v1';
 let cart = [];
-try {
-    cart = JSON.parse(localStorage.getItem('morachi_cart')) || [];
-    if (!Array.isArray(cart)) cart = [];
-} catch (e) {
-    console.error('Dữ liệu giỏ hàng (morachi_cart) bị lỗi, đã reset về giỏ hàng trống:', e);
-    cart = [];
-    try { localStorage.removeItem('morachi_cart'); } catch (e2) {}
-}
+(function restoreCart() {
+    for (const source of ['session', 'local']) {
+        try {
+            const storage = source === 'session' ? sessionStorage : localStorage;
+            const key = source === 'session' ? MORACHI_CART_FALLBACK_KEY : 'morachi_cart';
+            const raw = storage.getItem(key);
+            if (raw === null) continue;
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) throw new Error('Dữ liệu giỏ không phải danh sách');
+            cart = parsed.filter(item => item && typeof item === 'object' && item.id && item.title)
+                .map(item => ({...item, quantity: Math.max(1, Number(item.quantity) || 1)}));
+            return;
+        } catch (error) {
+            console.warn('Không đọc được giỏ hàng từ', source, error);
+        }
+    }
+})();
 let currentCheckoutOrderId = ""; 
 let vnProvinces = []; // Dữ liệu địa chỉ mới 2 cấp: Tỉnh/Thành phố -> Phường/Xã
 
@@ -114,15 +126,26 @@ function syncMorachiCheckoutButtonUI() {
 
 // 2. Lưu giỏ hàng
 function saveCart() {
+    const data = JSON.stringify(cart);
+    let saved = false;
     try {
-        localStorage.setItem('morachi_cart', JSON.stringify(cart));
-        updateCartUI();
-        return true;
+        localStorage.setItem('morachi_cart', data);
+        saved = true;
+        // Xóa bản phiên cũ, nhưng không coi lỗi xóa là lỗi lưu giỏ.
+        try { sessionStorage.removeItem(MORACHI_CART_FALLBACK_KEY); } catch (_) {}
     } catch (error) {
-        console.error('Không thể lưu giỏ hàng:', error);
-        updateCartUI();
-        return false;
+        console.warn('localStorage không ghi được giỏ hàng; thử sessionStorage:', error);
+        try {
+            sessionStorage.setItem(MORACHI_CART_FALLBACK_KEY, data);
+            saved = true;
+        } catch (fallbackError) {
+            console.error('Cả localStorage và sessionStorage đều không lưu được:', fallbackError);
+        }
     }
+    // Lỗi render không được làm khách tưởng việc lưu giỏ bị thất bại.
+    try { updateCartUI(); }
+    catch (renderError) { console.error('Lỗi hiển thị giỏ hàng:', renderError); }
+    return saved;
 }
 
 // 3. Mở giỏ hàng (Luôn trượt ra)
@@ -173,6 +196,7 @@ function addToCart(product) {
         String(item.variant || 'Mặc định') === String(normalizedProduct.variant || 'Mặc định')
     );
 
+    const previousCart = cart.map(item => ({ ...item }));
     if (existingItem) {
         existingItem.quantity =
             Math.max(1, Number(existingItem.quantity) || 1) + qtyToAdd;
@@ -181,13 +205,19 @@ function addToCart(product) {
     }
 
     const saved = saveCart();
-    return saved ? normalizedProduct : false;
+    if (!saved) {
+        // Không hiển thị giỏ đã thêm khi cả hai loại storage đều thất bại.
+        cart = previousCart;
+        try { updateCartUI(); } catch (error) { console.error(error); }
+        return false;
+    }
+    return normalizedProduct;
 }
 
 // 5. Cập nhật giao diện giỏ hàng
 function updateCartUI() {
     const countElements = document.querySelectorAll('.cart-count');
-    const totalQty = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const totalQty = cart.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     countElements.forEach(el => el.innerText = totalQty);
 
     const itemsContainer = document.getElementById('cart-items');
@@ -209,16 +239,16 @@ function updateCartUI() {
 
     let totalPrice = 0;
     itemsContainer.innerHTML = cart.map((item, index) => {
-        const itemTotal = Number(item.price) * item.quantity;
+        const itemTotal = toPriceNumber(item.price) * (Number(item.quantity) || 1);
         totalPrice += itemTotal;
         
         return `
             <div class="cart-item" style="display: flex; gap: 15px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px dashed #eee; position: relative;">
-                <img src="${item.image}" alt="${item.title}" onerror="this.src='images/icon-logo.png'" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #eee; border-radius: 8px; padding: 2px;">
+                <img src="${checkoutEscapeHtml(item.image || 'images/icon-logo.png')}" alt="${checkoutEscapeHtml(item.title)}" onerror="this.src='images/icon-logo.png'" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #eee; border-radius: 8px; padding: 2px;">
                 <div class="cart-item-info" style="flex: 1; padding-right: 25px;">
-                    <div class="cart-item-title" style="font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${item.title}</div>
-                    <div class="cart-item-variant" style="font-size: 12px; color: #888; margin-bottom: 5px;">Phân loại: ${item.variant}</div>
-                    <div class="cart-item-price" style="color: #f57224; font-weight: bold; margin-bottom: 10px; font-size: 15px;">${Number(item.price).toLocaleString('vi-VN')} đ</div>
+                    <div class="cart-item-title" style="font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${checkoutEscapeHtml(item.title)}</div>
+                    <div class="cart-item-variant" style="font-size: 12px; color: #888; margin-bottom: 5px;">Phân loại: ${checkoutEscapeHtml(item.variant)}</div>
+                    <div class="cart-item-price" style="color: #f57224; font-weight: bold; margin-bottom: 10px; font-size: 15px;">${toPriceNumber(item.price).toLocaleString('vi-VN')} đ</div>
                     <div class="cart-item-qty" style="display: flex; align-items: center; border: 1px solid #ddd; width: fit-content; border-radius: 4px; overflow: hidden;">
                         <button onclick="changeCartQty(${index}, -1)" style="background: #f9f9f9; border: none; padding: 5px 12px; cursor: pointer; font-weight: bold; color: #555;">-</button>
                         <span style="padding: 0 12px; font-size: 13px; font-weight: bold; min-width: 30px; text-align: center;">${item.quantity}</span>
@@ -279,10 +309,10 @@ function getCheckoutSubtotal() {
 function renderCheckoutItemsHtml(items) {
     return cloneCheckoutItems(items).map(item => `
         <div class="chk-item-row">
-            <img src="${item.image || 'images/icon-logo.png'}" alt="${item.title || 'Sản phẩm'}" onerror="this.src='images/icon-logo.png'">
+            <img src="${checkoutEscapeHtml(item.image || 'images/icon-logo.png')}" alt="${checkoutEscapeHtml(item.title || 'Sản phẩm')}" onerror="this.src='images/icon-logo.png'">
             <div class="chk-item-info">
-                <div class="chk-item-title">${item.title || 'Sản phẩm'}</div>
-                <div class="chk-item-variant">Phân loại: ${item.variant || 'Mặc định'}</div>
+                <div class="chk-item-title">${checkoutEscapeHtml(item.title || 'Sản phẩm')}</div>
+                <div class="chk-item-variant">Phân loại: ${checkoutEscapeHtml(item.variant || 'Mặc định')}</div>
                 <div class="chk-item-qty-label">SL: ${item.quantity || 1}</div>
             </div>
             <div class="chk-item-price">
@@ -876,9 +906,11 @@ window.saveCheckoutAddress = function() {
         if (index >= 0) addresses[index] = address;
         else addresses.unshift(address);
 
-        persistCheckoutSavedAddresses(addresses);
-        setCheckoutSelectedAddressId(address.id);
-        checkoutTemporaryAddress = null;
+        // Khi localStorage bị chặn, giữ địa chỉ trong phiên checkout hiện tại.
+        if (persistCheckoutSavedAddresses(addresses)) {
+            setCheckoutSelectedAddressId(address.id);
+            checkoutTemporaryAddress = null;
+        }
     }
 
     applyCheckoutAddressToForm(address);
@@ -933,9 +965,16 @@ function openCheckoutModal(itemsOverride = null, mode = 'cart') {
     const subtotal = getCheckoutSubtotal();
     const total = subtotal + shippingFee;
 
-    const timestamp = Date.now().toString();
-    const randomNum = Math.floor(10 + Math.random() * 90);
-    currentCheckoutOrderId = 'MO' + timestamp.slice(-4) + randomNum;
+    // Đủ entropy cho đơn thật; giữ nguyên mã trong lần retry của popup hiện tại.
+    const bytes = new Uint8Array(8);
+    if (window.crypto && window.crypto.getRandomValues) {
+        window.crypto.getRandomValues(bytes);
+        currentCheckoutOrderId = 'MO' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    } else {
+        // Fallback chỉ cho môi trường WebView không hỗ trợ crypto.
+        currentCheckoutOrderId = 'MO' + Date.now().toString(36).toUpperCase() +
+            Math.floor(Math.random() * 0xFFFFFF).toString(36).toUpperCase();
+    }
 
     const BANK_ACCOUNT = '2470168848012';
     const ACCOUNT_NAME = 'VO THI HONG ANH';
@@ -1180,16 +1219,25 @@ window.closeBankPaymentPopup = function() {
 async function preFetchProvinces() {
     if (vnProvinces.length > 0) return;
     try {
-        let cachedData = localStorage.getItem('morachi_vn_addresses_2level_v1');
-        if (cachedData) {
-            vnProvinces = JSON.parse(cachedData);
-        } else {
+        let raw = null;
+        try { raw = localStorage.getItem('morachi_vn_addresses_2level_v1'); }
+        catch (storageError) { console.warn('Không đọc được cache địa chỉ:', storageError); }
+        if (raw) {
+            try {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length) vnProvinces = parsed;
+            } catch (error) { console.warn('Cache địa chỉ không hợp lệ, tải lại:', error); }
+        }
+        // Không để lỗi localStorage ngăn người mua chọn tỉnh/phường.
+        if (!vnProvinces.length) {
             const res = await fetch('/data/vn-addresses-2level.json', { cache: 'no-cache' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            vnProvinces = await res.json();
+            const parsed = await res.json();
+            if (!Array.isArray(parsed) || !parsed.length) throw new Error('Dữ liệu địa chỉ rỗng');
+            vnProvinces = parsed;
             try { localStorage.setItem('morachi_vn_addresses_2level_v1', JSON.stringify(vnProvinces)); } catch(e){}
         }
-    } catch (e) { console.error("Lỗi tải dữ liệu địa chỉ 2 cấp:", e); }
+    } catch (e) { console.error('Lỗi tải dữ liệu địa chỉ 2 cấp:', e); }
 }
 
 // Dữ liệu Phường/Xã đã có sẵn theo từng Tỉnh/Thành phố trong file nội bộ.
@@ -1332,8 +1380,11 @@ window.setupAddressAutocomplete = function() {
 // ==============================================================
 // XỬ LÝ ĐẶT HÀNG VÀ BẮN API VÀO DATABASE
 // ==============================================================
+let morachiOrderSubmitInFlight = false;
 window.submitOrder = async function() {
+    if (morachiOrderSubmitInFlight) return;
     const btn = document.querySelector('.btn-checkout-confirm');
+    if (!btn || btn.disabled) return;
     btn.disabled = true;
     
     const textNode = btn.querySelector('.submit-texts strong');
@@ -1449,6 +1500,8 @@ window.submitOrder = async function() {
 };
 
 async function executeOrderSubmit(btn, name, phone, address) {
+    if (morachiOrderSubmitInFlight) return;
+    morachiOrderSubmitInFlight = true;
     const textNode = btn.querySelector('.submit-texts strong');
     const provEl = document.getElementById('chk-province');
     const distEl = document.getElementById('chk-district');
@@ -1471,6 +1524,7 @@ async function executeOrderSubmit(btn, name, phone, address) {
     // Backend sẽ tự đọc tên, giá và tồn kho thật từ Cosmos DB.
     const safeRequestItems = orderItems.map(item => ({
         id: item.id,
+        sku: item.sku || '',
         variant: item.variant || 'Mặc định',
         quantity: Number(item.quantity || 1)
     }));
@@ -1519,42 +1573,35 @@ async function executeOrderSubmit(btn, name, phone, address) {
             );
         }
 
-        // Chỉ lưu local và báo thành công sau khi backend đã tạo đơn thật.
-        let allOrders = [];
+        // Server đã xác nhận đơn. Cache trên điện thoại chỉ là tiện ích phụ:
+        // quota/private mode KHÔNG được biến đơn thành thông báo thất bại.
         try {
-            allOrders = JSON.parse(
-                localStorage.getItem('morachi_orders') || '[]'
-            );
+            let allOrders = JSON.parse(localStorage.getItem('morachi_orders') || '[]');
             if (!Array.isArray(allOrders)) allOrders = [];
-        } catch (error) {
-            allOrders = [];
+            if (!allOrders.some(order => order && order.order_id === serverOrderId)) {
+                allOrders.unshift(savedOrder);
+                // Tránh đầy bộ nhớ điện thoại vì lịch sử không giới hạn.
+                localStorage.setItem('morachi_orders', JSON.stringify(allOrders.slice(0, 50)));
+                const orderCount = parseInt(localStorage.getItem('morachi_order_count') || '0', 10) || 0;
+                localStorage.setItem('morachi_order_count', String(orderCount + 1));
+            }
+        } catch (cacheError) {
+            console.warn('Đơn đã được ghi trên Azure, nhưng điện thoại không lưu được lịch sử:', cacheError);
         }
-
-        allOrders.unshift(savedOrder);
-        localStorage.setItem(
-            'morachi_orders',
-            JSON.stringify(allOrders)
-        );
-
-        let orderCount = parseInt(
-            localStorage.getItem('morachi_order_count') || '0'
-        );
-        orderCount++;
-        localStorage.setItem(
-            'morachi_order_count',
-            orderCount
-        );
-
-        showSuccessModal(name, serverOrderId, method);
 
         if (!isBuyNowMode) {
             cart = [];
-            saveCart();
+            if (!saveCart()) console.warn('Đơn đã tạo; giỏ hàng cũ không xóa được trên trình duyệt.');
         }
-
+        try { closeCheckoutModal(); }
+        catch (uiError) { console.warn('Không đóng được popup checkout:', uiError); }
         checkoutItems = [];
         isBuyNowMode = false;
-        closeCheckoutModal();
+        try { showSuccessModal(name, serverOrderId, method); }
+        catch (uiError) {
+            console.error('Đơn đã được tạo nhưng popup thành công lỗi:', uiError);
+            alert('Đặt hàng thành công! Mã đơn: ' + serverOrderId);
+        }
 
     } catch (error) {
         console.error('Lỗi tạo đơn:', error);
@@ -1564,6 +1611,7 @@ async function executeOrderSubmit(btn, name, phone, address) {
         );
 
     } finally {
+        morachiOrderSubmitInFlight = false;
         if (textNode) textNode.innerText = 'Đặt hàng';
         btn.disabled = false;
     }

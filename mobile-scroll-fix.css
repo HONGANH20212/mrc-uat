@@ -1,0 +1,114 @@
+/* MORACHI_ADMIN_MOBILE_SCROLL_FIX_20261029
+ * CSS-only phone layout patch for legacy product/orders sections.
+ * Desktop and business logic remain unchanged.
+ */
+@media (max-width: 850px) {
+  body.morachi-unified-v3 { max-width: 100%; overflow-x: clip !important; }
+  body.morachi-unified-v3 > .main {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    overflow-x: clip;
+    box-sizing: border-box;
+  }
+  body.morachi-unified-v3 #section-orders,
+  body.morachi-unified-v3 #section-products {
+    width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  }
+  /* Do not let the original .card { overflow:hidden } clip table columns. */
+  body.morachi-unified-v3 #section-orders > .card,
+  body.morachi-unified-v3 #section-products > .card {
+    width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+  }
+  body.morachi-unified-v3 .mu4-table-scroll {
+    display: block;
+    width: 100%; max-width: 100%; min-width: 0;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+    scrollbar-width: thin;
+  }
+  body.morachi-unified-v3 .mu4-table-scroll > table {
+    width: 100%; min-width: 1050px;
+    border-collapse: collapse;
+  }
+  body.morachi-unified-v3 #section-products .mu4-table-scroll > table {
+    min-width: 1000px;
+  }
+  body.morachi-unified-v3 .mu4-table-scroll th,
+  body.morachi-unified-v3 .mu4-table-scroll td {
+    padding: 11px 12px;
+    font-size: 12px;
+  }
+  body.morachi-unified-v3 .mu4-scroll-note {
+    padding: 9px 12px; margin: 0;
+    background: #fff7ef; color: #99501e;
+    border-bottom: 1px solid #f1ded0;
+    font-size: 12px; font-weight: 650;
+  }
+  body.morachi-unified-v3 .order-header,
+  body.morachi-unified-v3 .order-header-actions,
+  body.morachi-unified-v3 .order-filter-top,
+  body.morachi-unified-v3 .top-header,
+  body.morachi-unified-v3 .filter-bar,
+  body.morachi-unified-v3 .table-footer,
+  body.morachi-unified-v3 .bulk-actions,
+  body.morachi-unified-v3 .taxonomy-status-strip,
+  body.morachi-unified-v3 .taxonomy-toolbar-actions {
+    flex-wrap: wrap;
+  }
+  body.morachi-unified-v3 .order-header-actions { gap: 7px; }
+  body.morachi-unified-v3 .order-header-actions > button { min-height: 37px; }
+  body.morachi-unified-v3 .order-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  body.morachi-unified-v3 .order-stat-card {
+    min-width: 0; gap: 7px; padding: 11px 10px;
+  }
+  body.morachi-unified-v3 .order-stat-icon {
+    flex: 0 0 34px; width: 34px; height: 34px; font-size: 15px;
+  }
+  body.morachi-unified-v3 .order-stat-info { min-width: 0; }
+  body.morachi-unified-v3 .order-stat-info .number { font-size: 20px; }
+  body.morachi-unified-v3 .order-filter-container { padding: 11px; }
+  body.morachi-unified-v3 .order-filter-top > .search-box {
+    flex: 1 0 100%; width: 100%; max-width: 100%; min-width: 0;
+  }
+  body.morachi-unified-v3 .order-filter-top > div[style*="margin-left"] {
+    margin-left: 0 !important; flex-wrap: wrap;
+  }
+  body.morachi-unified-v3 .order-filter-quick { gap: 6px; }
+  body.morachi-unified-v3 .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;
+  }
+  body.morachi-unified-v3 .stat-card { min-width: 0; padding: 10px; gap: 8px; }
+  body.morachi-unified-v3 .stat-icon {
+    width: 32px; height: 32px; flex: 0 0 32px; font-size: 14px;
+  }
+  body.morachi-unified-v3 .table-footer { gap: 12px; padding: 12px; }
+  body.morachi-unified-v3 .bulk-actions { gap: 8px; }
+  body.morachi-unified-v3 .bulk-action-bar {
+    left: 8px !important; right: 8px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+    transform: none !important;
+    width: auto !important; min-width: 0 !important; max-width: none !important;
+    padding: 10px !important; gap: 9px !important;
+    flex-wrap: wrap; max-height: 42dvh; overflow: auto;
+    box-sizing: border-box;
+  }
+  body.morachi-unified-v3 .bulk-actions-btns {
+    gap: 7px; flex-wrap: wrap; max-width: 100%;
+  }
+  body.morachi-unified-v3 .bulk-actions-btns select { max-width: 100%; }
+  body.morachi-unified-v3 .modal { padding: 10px; box-sizing: border-box; }
+  body.morachi-unified-v3 .modal-content {
+    width: 100% !important;
+    max-width: calc(100vw - 20px) !important;
+    padding: 14px !important;
+    box-sizing: border-box;
+  }
+  body.morachi-unified-v3 .variant-row { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}

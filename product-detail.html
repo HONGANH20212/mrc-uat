@@ -2276,7 +2276,7 @@
         </div>
     </div>
 
-    <script src="cart.js?v=20261007-cartfix3"></script>
+    <script src="cart.js?v=20261029-checkout-safe1"></script>
 
     <script>
         const API_URL = "/api/products";
@@ -3224,6 +3224,7 @@
                 brand: currentProduct.brand,
                 image: getSelectorVariantImage(variant),
                 variant: variant.name || 'Mặc định',
+                sku: variant.sku || '',
                 price: getSelectorVariantPrice(variant),
                 status: variant.status || 'instock',
                 date: variant.date || variant.expected_date || 'Đang cập nhật',

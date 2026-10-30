@@ -495,6 +495,7 @@
 <!-- MORACHI_ADMIN_UNIFIED_V3 -->
 <link rel="stylesheet" href="/admin/unified-v3.css?v=20261028-3">
 <script defer src="/admin/unified-v3.js?v=20261028-3"></script>
+<link rel="stylesheet" href="/admin/mobile-scroll-fix.css?v=20261029-1">
 </head>
 <body>
     <div class="sidebar">
@@ -611,6 +612,8 @@
             </div>
 
             <div class="card">
+                <p class="mu4-scroll-note">⇆ Vuốt ngang bảng để xem đủ thông tin sản phẩm và nút thao tác</p>
+                <div class="mu4-table-scroll" role="region" tabindex="0" aria-label="Bảng sản phẩm, có thể vuốt ngang">
                 <table>
                     <thead>
                         <tr>
@@ -627,6 +630,7 @@
                     </thead>
                     <tbody id="admin-product-list"></tbody>
                 </table>
+                </div>
                 <div class="table-footer">
                     <div class="bulk-actions">
                         <span>Đã chọn <span id="selected-product-count" class="bulk-product-count">0</span> sản phẩm</span>
@@ -735,6 +739,8 @@
             </div>
 
             <div class="card" style="margin-bottom: 60px;">
+                <p class="mu4-scroll-note">⇆ Vuốt ngang bảng để xem tổng tiền, trạng thái và thao tác đơn hàng</p>
+                <div class="mu4-table-scroll" role="region" tabindex="0" aria-label="Bảng đơn hàng, có thể vuốt ngang">
                 <table>
                     <thead>
                         <tr>
@@ -750,6 +756,7 @@
                     </thead>
                     <tbody id="admin-order-list"></tbody>
                 </table>
+                </div>
             </div>
 
             <!-- Thanh Thao Tác Hàng Loạt -->

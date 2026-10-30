@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>MORACHI · SKU & Tồn kho – UAT</title>
+<style>
+:root{--navy:#202938;--navy2:#2e394c;--orange:#f67823;--body:#f5f6f9;--muted:#758090;--text:#222a35;--green:#16875a;--red:#ce4747;--amber:#b87113;--line:#e7e9ee}
+*{box-sizing:border-box}html{font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#e8eaf0;color:var(--text)}body{margin:0}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:3px solid #ffb471;outline-offset:2px}
+#app{width:min(100%,440px);margin:0 auto;min-height:100svh;background:var(--body);box-shadow:0 10px 50px #15213022;padding-bottom:93px}
+.top{background:var(--navy);color:#fff;border-radius:0 0 22px 22px;padding:16px 15px 16px}.topline{display:flex;align-items:center;justify-content:space-between;gap:10px}.identity{display:flex;align-items:center;gap:10px}.logo{width:40px;height:40px;background:#ffffff17;border:1px solid #ffffff22;border-radius:13px;display:grid;place-items:center;color:white;font-weight:800;font-size:19px}.brand{font-size:18px;font-weight:850;letter-spacing:.4px}.subbrand{font-size:11px;color:#bbc4d0;margin-top:3px}.demo{border-radius:999px;padding:6px 9px;font-size:10px;background:#ffffff15;border:1px solid #ffffff33;color:#fff;font-weight:700}.overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:15px}.metric{background:#ffffff13;border:1px solid #ffffff16;border-radius:13px;padding:10px 8px}.metric .num{font-size:20px;font-weight:850}.metric .lab{font-size:10px;color:#bdc5d2;margin-top:3px}.toolbar{position:sticky;top:0;background:var(--body);z-index:12;padding:12px 13px 8px}.search{border:1px solid #e2e5eb;background:white;border-radius:14px;display:flex;align-items:center;gap:9px;padding:11px 12px}.search svg{flex:none}.search input{border:0;outline:0;width:100%;background:transparent;font-size:13px}.search input::placeholder{color:#9aa2af}.filterbar{display:flex;gap:7px;margin-top:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}.filterbar::-webkit-scrollbar{display:none}.filter{border:1px solid #e7e9ee;background:#fff;color:#525c69;border-radius:99px;padding:9px 12px;font-size:11px;font-weight:760;white-space:nowrap}.filter.active{background:var(--navy);color:#fff;border-color:var(--navy)}.content{padding:5px 13px 16px}.section-head{display:flex;align-items:center;justify-content:space-between;margin:5px 0 12px}.section-head strong{font-size:15px}.head-side{display:flex;align-items:center;gap:8px}.result-count{color:#7f8998;font-size:11px}.layoutbtn{display:flex;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;width:34px;height:33px;border-radius:10px;font-size:14px;color:#566273}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.product{min-width:0;text-align:left;border:1px solid #e8eaf0;background:#fff;border-radius:15px;padding:6px 6px 9px;box-shadow:0 3px 13px #1b233309;display:flex;flex-direction:column;position:relative;overflow:hidden;color:var(--text)}.product:active{transform:scale(.98)}.photo{aspect-ratio:1/1;width:100%;object-fit:contain;background:#f9fafb;border-radius:11px;display:block}.corner{position:absolute;top:11px;right:11px;min-width:21px;height:21px;padding:0 5px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;box-shadow:0 1px 4px #0001;background:#fff}.corner.low{color:var(--amber)}.corner.out{color:var(--red)}.corner.good{color:var(--green)}.pbrand{font-size:9px;letter-spacing:.4px;font-weight:800;color:#8b93a0;padding:0 2px;margin-top:8px}.pname{font-size:11.5px;font-weight:760;line-height:1.34;margin:3px 2px 0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;height:31px}.pbottom{display:flex;justify-content:space-between;align-items:center;margin:8px 2px 0;gap:3px}.variant-pill{color:#9b6020;background:#fff4e9;border-radius:99px;padding:4px 6px;font-size:9px;font-weight:800}.remain{font-size:10px;color:#747f8f;font-weight:700}.empty{text-align:center;color:var(--muted);padding:50px 14px;font-size:13px;grid-column:1/-1}.hint{text-align:center;font-size:11px;color:#8590a0;padding:13px 5px}.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,440px);display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:15}.nav{display:flex;flex-direction:column;gap:4px;align-items:center;background:transparent;border:0;color:#8390a1;font-size:11px;font-weight:700;padding:5px}.nav svg{width:20px;height:20px}.nav.active{color:var(--orange)}.overlay{display:none;position:fixed;inset:0;background:#141a2699;z-index:40}.overlay.show{display:block}.sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,105%);width:min(100%,440px);max-height:92svh;overflow-y:auto;background:#fff;border-radius:25px 25px 0 0;z-index:41;transition:transform .24s ease;overscroll-behavior:contain;padding:8px 15px calc(16px + env(safe-area-inset-bottom))}.sheet.show{transform:translate(-50%,0)}.handle{width:42px;height:5px;border-radius:99px;background:#e0e3e9;margin:0 auto 13px}.sheet-header{display:flex;align-items:flex-start;gap:12px}.sheet-image{width:77px;height:77px;border-radius:13px;background:#fafafa;object-fit:contain;border:1px solid #edf0f2;flex:none}.sheet-copy{min-width:0;flex:1}.sheet-copy h2{font-size:15px;line-height:1.3;margin:3px 0 5px}.sheet-copy .brandname{color:#8a93a1;font-size:11px;font-weight:700}.close{border:0;background:#f4f6f8;color:#617083;border-radius:10px;width:31px;height:31px;font-size:22px;line-height:1;flex:none}.group-label{font-size:12px;font-weight:820;margin:15px 0 9px}.variant-row{display:flex;gap:7px;overflow:auto;scrollbar-width:none;padding:0 0 6px}.variant-btn{border:1px solid var(--line);background:#fff;border-radius:12px;min-width:116px;max-width:182px;text-align:left;padding:9px 10px;color:var(--text)}.variant-btn.active{border-color:#f79c56;background:#fff7f0;box-shadow:inset 0 0 0 1px #f79c56}.variant-name{display:block;font-size:11px;font-weight:750;line-height:1.25}.variant-count{display:block;font-size:10px;color:#8893a2;margin-top:4px}.sku{display:inline-block;border:1px solid #e5e9ef;background:#f8fafb;border-radius:99px;font-size:11px;color:#4b5869;padding:6px 10px;margin:6px 0}.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.info-box{background:#f8f9fc;border:1px solid #e6e9f0;padding:12px 11px;border-radius:14px}.info-box small{display:block;color:#768292;font-size:10.5px;margin-bottom:5px}.info-box strong{font-size:16px}.stock-label{display:inline-block;padding:5px 9px;border-radius:99px;margin:11px 0 0;font-size:11px;font-weight:800}.stock-label.low{background:#fff3e5;color:var(--amber)}.stock-label.out{background:#fef0f0;color:var(--red)}.stock-label.good{background:#e9f8ef;color:var(--green)}.actrow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:15px 0 0}.btn{border-radius:13px;padding:13px 10px;font-weight:800;font-size:13px;border:1px solid var(--line);color:#252e3b;background:#fff}.btn.primary{background:var(--orange);color:#fff;border-color:var(--orange)}.edit-area{background:#f9fafc;border:1px solid #e9ecf1;border-radius:15px;padding:12px;margin-top:12px}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.field{min-width:0}.field label{display:block;font-size:10px;font-weight:800;color:#707f91;margin:0 0 6px}.field input{width:100%;background:#fff;border:1px solid #dee3ea;border-radius:10px;padding:11px 9px;font-size:14px;color:#182638}.field.wide{grid-column:1/-1}.calc{background:#fff5ea;border-radius:12px;padding:11px;font-size:12px;margin-top:10px;color:#8a5617;display:flex;justify-content:space-between}.cta{width:100%;margin-top:12px}.toast{position:fixed;left:50%;bottom:91px;transform:translateX(-50%);background:#253448;color:#fff;font-size:12px;border-radius:12px;padding:12px 15px;max-width:390px;min-width:240px;text-align:center;z-index:60;box-shadow:0 12px 30px #0003}.quiet{font-size:10px;color:#8993a1;margin-top:9px}.hidden{display:none!important}body.lock{overflow:hidden}
+@media (min-width:520px){body{padding:20px 0}#app{border-radius:24px;overflow:hidden}.top{border-radius:22px}.bottom{border-radius:16px 16px 0 0}}
+
+/* Live UAT enhancements */
+.live{background:#ddf8ea;color:#197348;border:1px solid #a7e9c3}
+.muted{color:var(--muted);font-size:11px;line-height:1.5}
+.banner{margin:10px 13px 0;border:1px solid #cae6fa;background:#eff8ff;color:#2d5b83;border-radius:12px;padding:10px 12px;font-size:11px;line-height:1.5}
+.refresh{border:1px solid #f3b177;color:#a75910;background:#fff7f0;border-radius:11px;padding:8px 10px;font-size:12px;font-weight:750}
+.refresh:disabled{opacity:.55}
+.variant-btn{flex:0 0 auto}
+.state-note{font-size:11px;line-height:1.5;color:#7d8898;margin:9px 0 0}
+.wide-action{display:flex;gap:8px;margin-top:14px}
+.wide-action a,.wide-action button{flex:1;display:flex;align-items:center;justify-content:center;text-decoration:none;text-align:center}
+#notice{display:none}
+#notice.show{display:block;background:#fff2e9;color:#9b581b;border:1px solid #f2d5bc;border-radius:13px;padding:13px;margin:6px 0 12px;font-size:12px;line-height:1.6}
+.card-warn{font-size:9px;color:#8d6464;font-weight:750;margin:2px 2px 0}
+@media(prefers-reduced-motion:reduce){.sheet{transition:none!important}.product:active{transform:none}}
+</style>
+<!-- MORACHI_ADMIN_UNIFIED_V3 EMBED -->
+<script data-mu3-embed="1">(function(){if(window.self===window.top){location.replace('/admin/#sku');return;}document.documentElement.classList.add('mu3-embedded','mu3-sku');})();</script>
+<link rel="stylesheet" href="/admin/embedded-v3.css?v=20261028-3">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="topline">
+      <div class="identity"><div class="logo">M</div><div><div class="brand">MORACHI</div><div class="subbrand">Kho sản phẩm · UAT</div></div></div>
+      <div class="demo live">DỮ LIỆU THẬT</div>
+    </div>
+    <div class="overview">
+      <div class="metric"><div class="num" id="sumProducts">—</div><div class="lab">Sản phẩm</div></div>
+      <div class="metric"><div class="num" id="sumLow">—</div><div class="lab">Sắp hết SKU</div></div>
+      <div class="metric"><div class="num" id="sumOut">—</div><div class="lab">Hết hàng SKU</div></div>
+    </div>
+  </header>
+  <div class="banner">Đang đọc dữ liệu từ <strong>/api/manage/products</strong> · Chế độ chỉ xem (không ghi vào DB). Giá vốn theo tỷ giá <strong>¥ × 170</strong>.</div>
+  
+<div style="margin:10px 13px 4px;"><a href="/admin/bulk-jpy.html" style="display:block;text-align:center;background:#f67823;color:#fff;border-radius:12px;padding:13px;font-size:13px;font-weight:800;text-decoration:none;">⇩ Xuất / Import giá Yên theo SKU</a></div>
+<div class="toolbar">
+    <label class="search" aria-label="Tìm sản phẩm">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e99a7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" placeholder="Tìm sản phẩm, màu, thương hiệu, SKU..." autocomplete="off" aria-label="Tìm sản phẩm"/>
+    </label>
+    <div class="filterbar" id="filters">
+      <button type="button" class="filter active" data-filter="all">Tất cả</button>
+      <button type="button" class="filter" data-filter="low">⚠ Sắp hết</button>
+      <button type="button" class="filter" data-filter="out">Hết hàng</button>
+      <button type="button" class="filter" data-filter="order">Hàng order</button>
+    </div>
+  </div>
+  <main class="content">
+    <div class="section-head"><strong>Danh sách sản phẩm</strong><div class="head-side"><span class="result-count" id="resultCount">Đang tải...</span><button class="refresh" id="refresh" type="button">↻ Tải lại</button><button class="layoutbtn" id="layoutToggle" type="button" title="Đổi số cột" aria-label="Đổi số cột">▦</button></div></div>
+    <div id="notice" role="alert"></div>
+    <div class="grid" id="grid"><div class="empty">Đang tải dữ liệu sản phẩm từ UAT...</div></div>
+    <div class="hint">Chạm vào sản phẩm để xem từng màu và số lượng hiện có.<br>SKU, giá Yên và ngưỡng cảnh báo chỉ hiển thị nếu đã có trong DB.</div>
+  </main>
+  <nav class="bottom">
+    <button class="nav active" type="button" id="navAll"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9 12 3l9 6v12H3z"/><path d="M9 21v-7h6v7"/></svg>Sản phẩm</button>
+    <button class="nav" type="button" id="navLow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5"/><circle cx="12" cy="18" r="1" fill="currentColor"/></svg>Cảnh báo</button>
+    <button class="nav" type="button" id="navSearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Tìm kiếm</button>
+  </nav>
+</div>
+<div class="overlay" id="overlay" aria-hidden="true"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="handle"></div>
+  <div class="sheet-header">
+    <img id="sheetImage" class="sheet-image" alt=""/>
+    <div class="sheet-copy"><div class="brandname" id="sheetBrand"></div><h2 id="modalTitle"></h2><div class="brandname" id="sheetCategory"></div></div>
+    <button class="close" type="button" id="close" aria-label="Đóng">×</button>
+  </div>
+  <div class="group-label">Chọn phân loại / màu</div>
+  <div class="variant-row" id="variantRow"></div>
+  <div class="sku" id="skuCode"></div>
+  <div class="info-grid" id="infoGrid"></div>
+  <div id="stockStatus"></div>
+  <p class="state-note" id="variantNote"></p>
+  <div class="wide-action"><button class="btn" type="button" id="reloadSheet">↻ Làm mới tồn kho</button><a class="btn primary" href="/admin/">Mở Admin ↗</a></div>
+  <p class="quiet">Bản này chỉ đọc dữ liệu. Muốn sửa tồn kho/giá nhập cần bổ sung API và quyền ghi UAT trong bước tiếp theo.</p>
+</section>
+<script>(() => {
+  'use strict';
+  const API = '/api/manage/products';
+  const RATE = 170;
+  const $ = id => document.getElementById(id);
+  const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+  const money = n => Number(n).toLocaleString('vi-VN');
+  const first = (...values) => values.find(v => v !== undefined && v !== null && v !== '');
+  const numberOrNull = n => {
+    if (n === undefined || n === null || String(n).trim() === '') return null;
+    const val = Number(n);
+    return Number.isFinite(val) && val >= 0 ? val : null;
+  };
+  // Chỉ sử dụng đường dẫn ảnh hợp lệ; không nhúng HTML/JS từ dữ liệu DB.
+  const imageUrl = s => {
+    if (typeof s !== 'string') return '/images/icon-logo.png';
+    const url = s.trim();
+    if (/^https?:\/\//i.test(url) || (/^\/(?!\/)/.test(url)) || /^images\/[A-Za-z0-9_./-]+$/.test(url)) return url;
+    return '/images/icon-logo.png';
+  };
+  const productToUi = (p, index) => {
+    const variants = Array.isArray(p.variants) && p.variants.length ? p.variants : [{name:'Mặc định', stock:p.stock, status:'', image:p.thumbnail}];
+    return {
+      id: String(p.id ?? index),
+      name: String(p.title || 'Sản phẩm chưa có tên'),
+      brand: String(p.brand || 'Chưa có thương hiệu'),
+      category: String(p.category || ''),
+      thumbnail: imageUrl(p.thumbnail || variants.find(v => v?.image)?.image),
+      variants: variants.map((v, i) => ({
+        name: String(v?.name || `Phân loại ${i + 1}`),
+        stock: numberOrNull(v?.stock),
+        status: String(v?.status || '').toLowerCase(),
+        image: imageUrl(v?.image || p.thumbnail),
+        sku: String(v?.sku || ''),
+        yen: numberOrNull(first(v?.purchase_price_jpy, v?.cost_jpy, v?.yen, v?.purchase_price_yen)),
+        threshold: numberOrNull(first(v?.min_stock, v?.low_stock_threshold, v?.alert_threshold, v?.min))
+      }))
+    };
+  };
+  let products = [];
+  let filter = 'all';
+  let selected = null;
+  let selectedVariant = 0;
+  const flags = v => {
+    if (v.status === 'order') return 'order';
+    if (v.status === 'out' || v.stock === 0) return 'out';
+    if (v.stock === null) return 'unknown';
+    if (v.threshold !== null && v.stock <= v.threshold) return 'low';
+    return 'good';
+  };
+  const countStock = p => {
+    const numbers = p.variants.map(v => v.stock).filter(n => n !== null);
+    return numbers.length ? `${money(numbers.reduce((a,b) => a + b, 0))}` : '—';
+  };
+  const notice = (s = '') => { $('notice').textContent = s; $('notice').classList.toggle('show', Boolean(s)); };
+  function updateSummary(){
+    $('sumProducts').textContent = money(products.length);
+    const list = products.flatMap(p => p.variants);
+    $('sumLow').textContent = money(list.filter(v => flags(v) === 'low').length);
+    $('sumOut').textContent = money(list.filter(v => flags(v) === 'out').length);
+  }
+  function updateBrandFilters(){
+    const bar = $('filters');
+    bar.querySelectorAll('[data-filter="brand"]').forEach(el => el.remove());
+    const brands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+    for(const brand of brands){
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'filter';
+      button.dataset.filter = 'brand';
+      button.dataset.brand = brand;
+      button.textContent = brand;
+      bar.appendChild(button);
+    }
+  }
+  function draw(){
+    updateSummary();
+    const q = $('q').value.trim().toLocaleLowerCase('vi');
+    const subset = products.filter(p => {
+      const text = [p.name, p.brand, p.category, ...p.variants.flatMap(v=>[v.name,v.sku])].join(' ').toLocaleLowerCase('vi');
+      const yes = !q || text.includes(q);
+      const f = filter === 'all' || (filter.startsWith('brand:') && p.brand === filter.slice(6)) || p.variants.some(v => flags(v) === filter);
+      return yes && f;
+    });
+    $('resultCount').textContent = `${money(subset.length)} sản phẩm`;
+    $('grid').innerHTML = subset.length ? subset.map(p => {
+      const out = p.variants.some(v => flags(v) === 'out');
+      const low = p.variants.some(v => flags(v) === 'low');
+      const order = p.variants.some(v => flags(v) === 'order');
+      const badge = out ? '<span class="corner out">Hết</span>' : low ? '<span class="corner low">!</span>' : order ? '<span class="corner low">↻</span>' : '<span class="corner good">✓</span>';
+      const hasAnyStock = p.variants.some(v => v.stock !== null);
+      return `<button type="button" class="product" data-product-id="${esc(p.id)}" aria-label="Xem ${esc(p.name)}">
+        <img class="photo" src="${esc(p.thumbnail)}" alt="${esc(p.name)}" loading="lazy" decoding="async" />
+        ${badge}<div class="pbrand">${esc(p.brand)}</div>
+        <div class="pname">${esc(p.name)}</div>
+        <div class="pbottom"><span class="variant-pill">${p.variants.length} màu</span><span class="remain">Tồn: ${hasAnyStock ? countStock(p) : '—'}</span></div>
+        </button>`;
+    }).join('') : '<div class="empty">Không tìm thấy sản phẩm phù hợp.</div>';
+    for(const img of $('grid').querySelectorAll('img')) img.addEventListener('error', ()=>{ img.src = '/images/icon-logo.png'; }, {once:true});
+  }
+  function renderSheet(){
+    if(!selected)return;
+    const v = selected.variants[selectedVariant];
+    $('sheetImage').src = v.image || selected.thumbnail;
+    $('sheetImage').alt = `${selected.name} - ${v.name}`;
+    $('variantRow').innerHTML = selected.variants.map((item, i) => `<button type="button" class="variant-btn ${i===selectedVariant?'active':''}" data-variant="${i}"><span class="variant-name">${esc(item.name)}</span><span class="variant-count">${esc(item.sku || 'Chưa có SKU')} · Tồn ${item.stock === null ? '—' : money(item.stock)}</span></button>`).join('');
+    $('skuCode').textContent = '🏷 ' + (v.sku || 'Chưa cấu hình SKU');
+    $('infoGrid').innerHTML = [
+      ['Giá nhập JPY', v.yen === null ? 'Chưa nhập' : '¥'+money(v.yen)],
+      ['Giá vốn VND (×170)', v.yen === null ? 'Chưa nhập' : money(v.yen * RATE)+' đ'],
+      ['Tồn kho thực tế', v.stock === null ? 'Chưa có dữ liệu' : money(v.stock)],
+      ['Ngưỡng cảnh báo', v.threshold === null ? 'Chưa đặt' : money(v.threshold)]
+    ].map(([label,value]) => `<div class="info-box"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`).join('');
+    const state = flags(v);
+    const names = {out:'Hết hàng',low:'Sắp hết',good:'Còn hàng',order:'Hàng order / đặt trước',unknown:'Chưa có tồn kho'};
+    const css = {out:'out',low:'low',good:'good',order:'low',unknown:'low'};
+    $('stockStatus').innerHTML = `<span class="stock-label ${css[state]}">${names[state]}</span>`;
+    $('variantNote').textContent = (v.threshold === null ? 'Ngưỡng cảnh báo chưa được cấu hình trong Cosmos DB. ' : '') + (v.status === 'order' ? 'Phân loại này được đánh dấu hàng order, không tính là hàng sẵn bán. ' : '') + 'Số lượng lấy trực tiếp từ dữ liệu variants[].stock.';
+  }
+  function openSheet(p){
+    selected = p;
+    selectedVariant = 0;
+    $('sheetBrand').textContent = p.brand;
+    $('modalTitle').textContent = p.name;
+    $('sheetCategory').textContent = p.category;
+    renderSheet();
+    $('overlay').classList.add('show');
+    $('sheet').classList.add('show');
+    $('overlay').setAttribute('aria-hidden','false');
+    document.body.classList.add('lock');
+    $('close').focus();
+  }
+  function closeSheet(){
+    $('overlay').classList.remove('show');
+    $('sheet').classList.remove('show');
+    $('overlay').setAttribute('aria-hidden','true');
+    document.body.classList.remove('lock');
+    selected = null;
+  }
+  const filterTo = v => {
+    filter = v;
+    document.querySelectorAll('.filter').forEach(btn => {
+      const key = btn.dataset.filter === 'brand' ? 'brand:'+btn.dataset.brand : btn.dataset.filter;
+      btn.classList.toggle('active', key === v);
+    });
+    $('navAll').classList.toggle('active',v==='all');
+    $('navLow').classList.toggle('active',v==='low');
+    draw();
+  };
+  async function load(){
+    $('refresh').disabled = true;
+    $('refresh').textContent = 'Đang tải...';
+    notice('');
+    try{
+      const response = await fetch(API, {method:'GET',cache:'no-store',credentials:'same-origin',headers:{'Accept':'application/json'}});
+      if(!response.ok) throw new Error(`API trả về HTTP ${response.status}`);
+      const raw = await response.json();
+      if(!Array.isArray(raw)) throw new Error(raw?.error || 'API không trả về danh sách sản phẩm');
+      products = raw.map(productToUi);
+      updateBrandFilters();
+      if(filter.startsWith('brand:') && !products.some(p=>p.brand===filter.slice(6)))filter='all';
+      draw();
+      if(selected){
+        const current = products.find(p=>p.id===selected.id);
+        if(current){ selected = current; selectedVariant = Math.min(selectedVariant,current.variants.length-1); renderSheet(); }
+        else closeSheet();
+      }
+    } catch(error){
+      products = [];
+      updateBrandFilters();
+      $('sumProducts').textContent = '—';
+      $('sumLow').textContent = '—';
+      $('sumOut').textContent = '—';
+      $('grid').innerHTML = '<div class="empty">Không tải được dữ liệu. Kiểm tra Azure Functions và kết nối Cosmos DB UAT.</div>';
+      $('resultCount').textContent = 'Chưa tải được';
+      notice('Không kết nối được API /api/manage/products: ' + error.message + '. Hãy kiểm tra http://localhost:4280/api/manage/products, Azure Functions 7071 và cấu hình Cosmos UAT.');
+    } finally{
+      $('refresh').disabled = false;
+      $('refresh').textContent = '↻ Tải lại';
+    }
+  }
+  $('q').addEventListener('input',draw);
+  $('filters').addEventListener('click', e => {
+    const b = e.target.closest('.filter');if(!b)return;
+    filterTo(b.dataset.filter==='brand' ? 'brand:'+b.dataset.brand : b.dataset.filter);
+  });
+  $('grid').addEventListener('click',e=>{
+    const b = e.target.closest('[data-product-id]');if(!b)return;
+    const p = products.find(x=>x.id===b.dataset.productId);if(p)openSheet(p);
+  });
+  $('variantRow').addEventListener('click',e=>{
+    const btn=e.target.closest('[data-variant]');if(!btn||!selected)return;
+    selectedVariant=Number(btn.dataset.variant);renderSheet();
+  });
+  $('close').addEventListener('click',closeSheet);
+  $('overlay').addEventListener('click',closeSheet);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+  $('refresh').addEventListener('click',load);
+  $('reloadSheet').addEventListener('click',load);
+  $('layoutToggle').addEventListener('click',()=>{const two=$('grid').classList.toggle('two');$('layoutToggle').textContent=two?'▦':'▤'});
+  $('navAll').addEventListener('click',()=>{filterTo('all');window.scrollTo({top:0,behavior:'smooth'})});
+  $('navLow').addEventListener('click',()=>{filterTo('low');window.scrollTo({top:0,behavior:'smooth'})});
+  $('navSearch').addEventListener('click',()=>{$('q').focus();window.scrollTo({top:0,behavior:'smooth'})});
+  $('sheetImage').addEventListener('error',()=>{$('sheetImage').src='/images/icon-logo.png'}, {once:true});
+  load();
+})();</script>
+</body>
+</html>

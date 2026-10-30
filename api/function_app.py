@@ -17,6 +17,12 @@ app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 from jpy_import_web import jpy_import_bp
 app.register_functions(jpy_import_bp)
 
+# MORACHI_AUTO_SKU_JPY_20261030
+from morachi_sku_api import sku_bp
+from morachi_sku_core import add_skus_on_create, merge_and_assign_on_update
+app.register_functions(sku_bp)
+
+
 # --- CẤU HÌNH KẾT NỐI (Lấy từ Environment Variables của Azure) ---
 COSMOS_URL = os.environ.get("COSMOS_URL")
 COSMOS_KEY = os.environ.get("COSMOS_KEY")
@@ -347,6 +353,8 @@ def products(req: func.HttpRequest) -> func.HttpResponse:
         if req.method == "POST":
             body = req.get_json()
             product = normalize_product(body)
+            # New variants receive unique SKU-MOR-xxxx on the backend.
+            product['variants'] = add_skus_on_create(container, product.get('variants', []))
             now = datetime.utcnow().isoformat() + "Z"
             product.update({
                 "id": str(uuid.uuid4()),
@@ -507,6 +515,9 @@ def product_by_id(req: func.HttpRequest) -> func.HttpResponse:
         if req.method == "PUT":
             body = req.get_json()
             updated = normalize_product(body, existing)
+            # Preserve original SKU/JPY/cost fields; assign only for new variants.
+            updated['variants'] = merge_and_assign_on_update(
+                container, existing, updated.get('variants', []))
             updated["id"] = p_id
             updated["created_at"] = existing.get("created_at")
             updated["updated_at"] = datetime.utcnow().isoformat() + "Z"
@@ -516,7 +527,9 @@ def product_by_id(req: func.HttpRequest) -> func.HttpResponse:
                 container.delete_item(item=p_id, partition_key=old_brand)
                 container.create_item(body=updated)
             else:
-                container.replace_item(item=p_id, body=updated)
+                container.replace_item(
+                    item=p_id, body=updated, etag=existing['_etag'],
+                    match_condition=MatchConditions.IfNotModified)
             return json_response({"message": "Cập nhật thành công", "item": updated})
 
         if req.method == "DELETE":
@@ -895,7 +908,8 @@ def get_product_for_order(container, product_id):
     return items[0] if items else None
 
 
-def find_product_variant(product, requested_name):
+def find_product_variant(product, requested_name, requested_sku=""):
+    """Ưu tiên SKU chính xác; không chọn nhầm khi hai phân loại trùng tên."""
     variants = product.get("variants", [])
     if not isinstance(variants, list):
         variants = []
@@ -903,17 +917,25 @@ def find_product_variant(product, requested_name):
     if not variants:
         return None
 
-    requested = clean_customer_text(requested_name).lower()
+    requested = clean_customer_text(requested_name).casefold()
+    sku = clean_customer_text(requested_sku).upper()
+    if sku:
+        matches = [v for v in variants if isinstance(v, dict)
+                   and clean_customer_text(v.get("sku")).upper() == sku]
+        if len(matches) != 1:
+            raise ValueError("SKU không tồn tại hoặc bị trùng; vui lòng tải lại sản phẩm")
+        if requested and clean_customer_text(matches[0].get("name")).casefold() != requested:
+            raise ValueError("Phân loại đã thay đổi; vui lòng tải lại sản phẩm")
+        return matches[0]
+
     if not requested and len(variants) == 1:
         return variants[0]
 
-    for variant in variants:
-        if not isinstance(variant, dict):
-            continue
-        if clean_customer_text(variant.get("name")).lower() == requested:
-            return variant
-
-    return None
+    matches = [v for v in variants if isinstance(v, dict)
+               and clean_customer_text(v.get("name")).casefold() == requested]
+    if len(matches) > 1:
+        raise ValueError("Có nhiều phân loại trùng tên; vui lòng tải lại và chọn đúng SKU")
+    return matches[0] if matches else None
 
 
 def validate_and_build_order_items(container, raw_items):
@@ -932,6 +954,7 @@ def validate_and_build_order_items(container, raw_items):
 
         product_id = clean_customer_text(raw.get("id"))
         variant_name = clean_customer_text(raw.get("variant")) or "Mặc định"
+        variant_sku = clean_customer_text(raw.get("sku")).upper()
         quantity = parse_positive_int(raw.get("quantity"))
 
         if not product_id:
@@ -940,11 +963,12 @@ def validate_and_build_order_items(container, raw_items):
         if quantity < 1:
             raise ValueError("Số lượng sản phẩm không hợp lệ")
 
-        key = (product_id, variant_name.lower())
+        key = (product_id, variant_sku or variant_name.casefold())
         if key not in aggregated:
             aggregated[key] = {
                 "id": product_id,
                 "variant": variant_name,
+                "sku": variant_sku,
                 "quantity": 0
             }
         aggregated[key]["quantity"] += quantity
@@ -962,6 +986,7 @@ def validate_and_build_order_items(container, raw_items):
     for row in aggregated.values():
         product_id = row["id"]
         requested_variant_name = row["variant"]
+        requested_variant_sku = row.get("sku", "")
         quantity = row["quantity"]
 
         if product_id not in product_updates:
@@ -984,7 +1009,7 @@ def validate_and_build_order_items(container, raw_items):
         if not isinstance(variants, list):
             variants = []
 
-        variant = find_product_variant(product, requested_variant_name)
+        variant = find_product_variant(product, requested_variant_name, requested_variant_sku)
         if variants and not variant:
             raise ValueError(
                 f"Phân loại '{requested_variant_name}' không tồn tại"
@@ -1039,6 +1064,7 @@ def validate_and_build_order_items(container, raw_items):
             "brand": clean_customer_text(product.get("brand")),
             "image": image,
             "variant": variant_name,
+            "sku": clean_customer_text(variant.get("sku")) if variant else "",
             "price": unit_price,
             "quantity": quantity,
             "status": variant_status,
@@ -1097,19 +1123,20 @@ def enforce_phone_order_limit(container, phone):
         )
 
 
-def rollback_product_updates(container, originals, updated_ids):
-    """Cố gắng hoàn nguyên kho nếu tạo đơn bị lỗi giữa chừng."""
-    for product_id in reversed(updated_ids):
+def rollback_product_updates(container, originals, written_etags):
+    """Rollback có ETag: không ghi đè cập nhật kho từ đơn khác."""
+    for product_id, latest_etag in reversed(list(written_etags.items())):
         original = originals.get(product_id)
-        if not original:
+        if not original or not latest_etag:
             continue
         try:
-            container.replace_item(item=product_id, body=original)
-        except Exception as rollback_error:
-            print(
-                f"Không rollback được tồn kho sản phẩm "
-                f"{product_id}: {rollback_error}"
+            container.replace_item(
+                item=product_id, body=original,
+                etag=latest_etag,
+                match_condition=MatchConditions.IfNotModified
             )
+        except Exception as rollback_error:
+            print(f"Rollback kho {product_id} bị từ chối/xung đột: {rollback_error}")
 
 
 
@@ -1220,8 +1247,10 @@ def orders_api(req: func.HttpRequest) -> func.HttpResponse:
         # Giữ mã MO... hợp lệ do giao diện tạo để khớp nội dung VietQR.
         # Khi frontend không gửi mã, backend tự tạo; không thể xuất hiện N/A.
         order_code = requested_order_code or generate_order_code()
-        while order_code_exists(container, order_code):
-            order_code = generate_order_code()
+        if not requested_order_code:
+            while order_code_exists(container, order_code):
+                order_code = generate_order_code()
+        attempt_id = uuid.uuid4().hex
 
         status = (
             "Chờ xác nhận đã chuyển khoản"
@@ -1241,7 +1270,9 @@ def orders_api(req: func.HttpRequest) -> func.HttpResponse:
 
         now = datetime.utcnow().isoformat() + "Z"
         order_data = {
-            "id": str(uuid.uuid4()),
+            # Cố định ID theo order_code: Cosmos chống ghi 2 lần cùng mã đơn.
+            "id": "web-order-" + order_code,
+            "checkout_attempt_id": attempt_id,
             "brand": "ORDER",
             "type": "order",
             "order_id": order_code,
@@ -1266,24 +1297,49 @@ def orders_api(req: func.HttpRequest) -> func.HttpResponse:
         }
 
         # Chỉ cập nhật kho sau khi toàn bộ dữ liệu đã hợp lệ.
-        updated_product_ids = []
+        written_etags = {}
         try:
             for product_id, product_doc in product_updates.items():
-                # Chỉ replace khi dữ liệu sản phẩm thực sự có thể đã đổi stock.
-                container.replace_item(
-                    item=product_id,
-                    body=product_doc
+                original = product_originals[product_id]
+                # Hàng đặt trước không trừ kho; tránh replace tài liệu vô ích.
+                if product_doc == original:
+                    continue
+                result = container.replace_item(
+                    item=product_id, body=product_doc,
+                    etag=original.get("_etag"),
+                    match_condition=MatchConditions.IfNotModified
                 )
-                updated_product_ids.append(product_id)
+                written_etags[product_id] = result.get("_etag")
+                if not written_etags[product_id]:
+                    raise RuntimeError("Không nhận được ETag mới sau khi trừ kho")
 
             container.create_item(body=order_data)
 
         except Exception:
-            rollback_product_updates(
-                container,
-                product_originals,
-                updated_product_ids
-            )
+            # create_item có thể đã thành công trước khi kết nối bị ngắt.
+            # Chỉ rollback khi biết chắc đơn CHƯA được tạo.
+            persisted = None
+            try:
+                persisted = container.read_item(
+                    item=order_data["id"], partition_key="ORDER"
+                )
+            except Exception as check_error:
+                if getattr(check_error, "status_code", None) != 404:
+                    print("Không xác minh được trạng thái đơn, không rollback mù:", check_error)
+                    raise
+            if persisted and persisted.get("checkout_attempt_id") == attempt_id:
+                return json_response({
+                    "message": "Đơn đã được ghi nhận thành công",
+                    "order": persisted, "duplicate": False
+                }, 200)
+            rollback_product_updates(container, product_originals, written_etags)
+            if persisted:
+                if get_order_phone_for_lookup(persisted) == customer_info["phone"]:
+                    return json_response({
+                        "message": "Đơn đã được ghi nhận trước đó",
+                        "order": persisted, "duplicate": True
+                    }, 200)
+                return json_response({"error": "Mã đơn hàng đã tồn tại"}, 409)
             raise
 
         return json_response({

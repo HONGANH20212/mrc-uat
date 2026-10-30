@@ -1,0 +1,164 @@
+{
+  "routes": [
+    {
+      "route": "/api/manage/products",
+      "methods": [
+        "GET"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/offline-orders",
+      "methods": [
+        "POST"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/offline-orders/recent",
+      "methods": [
+        "GET"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/admin/offline-orders.html",
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/finance/*",
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/inventory/jpy/*",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/track",
+      "methods": [
+        "GET"
+      ],
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/api/customer-orders/*",
+      "methods": [
+        "PUT"
+      ],
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/api/upload-image",
+      "methods": [
+        "POST"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/products",
+      "methods": [
+        "POST"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/products/reorder",
+      "methods": [
+        "PUT"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/products/*",
+      "methods": [
+        "PUT",
+        "DELETE"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/orders",
+      "methods": [
+        "GET"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/api/orders/*",
+      "methods": [
+        "PUT",
+        "DELETE"
+      ],
+      "allowedRoles": [
+        "morachiadmin"
+      ]
+    },
+    {
+      "route": "/admin*",
+      "allowedRoles": [
+        "morachiadmin"
+      ],
+      "headers": {
+        "Cache-Control": "no-store"
+      }
+    },
+    {
+      "route": "/login",
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=/admin",
+      "statusCode": 302
+    },
+    {
+      "route": "/logout",
+      "redirect": "/.auth/logout?post_logout_redirect_uri=/",
+      "statusCode": 302
+    },
+    {
+      "route": "/san-pham/*",
+      "rewrite": "/product-detail.html"
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html"
+  },
+  "responseOverrides": {
+    "401": {
+      "redirect": "/.auth/login/aad?post_login_redirect_uri=.referrer",
+      "statusCode": 302
+    }
+  },
+  "globalHeaders": {
+    "content-security-policy": "default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval';"
+  }
+}
